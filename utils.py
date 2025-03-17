@@ -30,9 +30,12 @@ def parse_files_from_path(data_path, patterns=('reference', 'pre_gain', 'post_ga
     while batch_counter < len(data_list):
         head = ntpath.split(data_list[batch_counter])[0]
         all_elements = [elem for i, elem in enumerate(data_list) if head in elem]
-        elements_to_find = [elem for i, elem in enumerate(all_elements) if any([s in elem for s in patterns])]
-        if not len(elements_to_find) == len(patterns):
-            return 'Error: locate every batch of wav files in a separate subdirectory, ensure pattern names are unique.'
+        elements_to_find = []
+        for pattern in patterns:
+            matches = [elem for elem in all_elements if pattern in elem]
+            if len(matches) != 1:
+                return 'Error: Each pattern must match exactly one file in each subdirectory.'
+            elements_to_find.append(matches[0])
         paths_list.append(elements_to_find)
         batch_counter += len(all_elements)
 
@@ -50,21 +53,20 @@ def read_wav_files(path_list, patterns=('reference', 'pre_gain', 'post_gain'), p
     Number of rows equals the number of samples inside the wav files, number of columns equals the length of patterns.
     :return: fs: int. sample frequency of data samples of the wav files in path_list.
     """
-    indices_of_patterns = []
-    for s in patterns:
-        indices_of_patterns.append([i for i, elem in enumerate(path_list) if s in elem])
-    indices_of_patterns = [val for sublist in indices_of_patterns for val in sublist]
-    for i, index in enumerate(indices_of_patterns):
-        fs, wav_data = wavfile.read(os.path.join(path_list[index]))
-        if 'fs_ref' in locals() and fs != fs_ref:
-            print('Error: All sample frequency must be identical')
-            return
-        if 'len_wav_ref' in locals() and len(wav_data) != len_wav_ref:
-            print('Error: All signals lengths must be identical')
-            return
+
+    wav_array = None
+    fs_ref = None
+    len_wav_ref = None
+
+    for i,path in enumerate(path_list):
+        fs, wav_data = wavfile.read(path)
+        if fs_ref is not None and fs != fs_ref:
+            raise ValueError('Error: All sample frequencies must be identical')
+        if len_wav_ref is not None and len(wav_data) != len_wav_ref:
+            raise ValueError('Error: All signal lengths must be identical')
         fs_ref = fs
         len_wav_ref = len(wav_data)
-        if 'wav_array' not in locals():
+        if wav_array is None:
             wav_array = np.empty((wav_data.size, len(patterns)))
         wav_array[:, i] = np.divide(wav_data, pow(2, 15))
 
