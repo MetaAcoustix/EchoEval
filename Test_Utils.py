@@ -44,12 +44,10 @@ class TestUtils(unittest.TestCase):
     def test_parse_files_from_path(self):
 
         paths_list = parse_files_from_path(self.temp_dir, self.patterns)
-
-
         self.assertEqual(len(paths_list), 1)
         self.assertEqual(len(paths_list[0]), 3)
-        for path, pattern in zip(paths_list[0], self.patterns):
-            self.assertIn(pattern, path)
+        for path, expected_file in zip(paths_list[0], self.wav_files):
+            self.assertEqual(path, expected_file)
             self.assertTrue(os.path.exists(path))
 
         bad_patterns = ('ref', 'pre', 'wrong')
@@ -68,8 +66,8 @@ class TestUtils(unittest.TestCase):
 
         bad_file = os.path.join(self.sub_dir, "bad_ref.wav")
         wavfile.write(bad_file, 8000, self.data)
-        bad_paths = [bad_file] + paths_list[1:]
-        with self.assertRaises(SystemExit):
+        bad_paths = [bad_file,self.wav_files[1],self.wav_files[2]]
+        with self.assertRaises(ValueError):
             read_wav_files(bad_paths, self.patterns)
 
     def test_save_and_plot(self):
